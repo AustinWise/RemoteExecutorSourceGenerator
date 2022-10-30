@@ -70,35 +70,22 @@ namespace RemoteExecutorSourceGenerator
         {
             if (methods.IsDefaultOrEmpty)
             {
-                // nothing to do yet
                 return;
             }
 
-            // I'm not sure if this is actually necessary, but `[LoggerMessage]` does it, so seems like a good idea!
-            IEnumerable<MethodDeclarationSyntax> distinctMethods = methods.Distinct();
-
             var sb = new StringBuilder();
-            var sbLog = new StringBuilder();
 
-            sbLog.AppendLine("class TEST {");
-            sbLog.AppendLine("public TEST() {");
-            writeLine(sbLog, "MY TEST 4");
-
-            foreach (var meth in distinctMethods)
+            foreach (var meth in methods)
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-                ProcessOneMethod(meth, sb, sbLog, compilation, context);
+                ProcessOneMethod(meth, sb, compilation, context);
             }
 
-            sbLog.AppendLine("}");
-            sbLog.AppendLine("}");
-
-            context.AddSource("Log.g.cs", SourceText.From(sbLog.ToString(), Encoding.UTF8));
             context.AddSource("RemotelyInvokable.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         }
 
-        static void ProcessOneMethod(MethodDeclarationSyntax meth, StringBuilder sb, StringBuilder sbLog, Compilation compilation, SourceProductionContext context)
+        static void ProcessOneMethod(MethodDeclarationSyntax meth, StringBuilder sb, Compilation compilation, SourceProductionContext context)
         {
             // TODO: check types. currently assuming all parameters are strings and return type is either void or int.
             // TODO: make sure if the method is non-static that the type has a zero-argument constructor
@@ -158,30 +145,35 @@ namespace RemoteExecutorSourceGenerator
             sb.AppendLine("}));");
             sb.AppendLine("    }");
 
+
+            sb.Append($"    private global::RemoteExecutorLib.RemoteInvokeHandle Invoke{methodSymbol.Name}(");
+            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
+            {
+                sb.Append($"string {methodSymbol.Parameters[i].Name}, ");
+            }
+            sb.AppendLine("global::RemoteExecutorLib.RemoteInvokeOptions __options = null)");
+            sb.Append(' ', 4);
+            sb.AppendLine("{");
+            sb.Append(' ', 8);
+            sb.Append($"return global::RemoteExecutorLib.RemoteExecutor.Invoke(typeof({className}).Assembly, \"{key}\", new string[] {{");
+            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
+            {
+                sb.Append(methodSymbol.Parameters[i].Name);
+                if (i != (methodSymbol.Parameters.Length - 1))
+                    sb.Append(", ");
+            }
+            sb.AppendLine("}, __options);");
+            sb.Append(' ', 4);
+            sb.AppendLine("}");
+
+
+
             sb.AppendLine("}");
 
             if (ns != GlobalNamespaceValue)
             {
                 sb.AppendLine($"}} // namespace {ns}");
             }
-
-
-            writeLine(sbLog, "NS: " + parentTypeSymbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining)));
-            writeLine(sbLog, "Class: " + parentTypeSymbol.Name);
-            writeLine(sbLog, "Method: " + methodSymbol.Name);
-            writeLine(sbLog, "Method Type: " + methodSymbol.GetType().FullName);
-            writeLine(sbLog, "");
-
         }
-
-        static void writeLine(StringBuilder sb, string s)
-        {
-            s = s.Replace("\\", "\\\\");
-            s = s.Replace("\"", "\\\"");
-            s = s.Replace("\n", "\\n");
-            s = s.Replace("\r", "\\r");
-            sb.AppendLine("System.Console.WriteLine(\"" + s + "\");");
-        }
-
     }
 }
