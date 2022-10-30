@@ -22,6 +22,11 @@
             ReferenceOutputAssembly="false" />
     </ItemGroup>
 
+    <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+        <UseAppHost>true</UseAppHost>
+        <SelfContained>true</SelfContained>
+    </PropertyGroup>
+
     <ItemGroup Condition="'$(PublishAot)' == 'true'">
         <RdXmlFile Include="rd.xml" />
         <IlcArg Include="--nometadatablocking" />

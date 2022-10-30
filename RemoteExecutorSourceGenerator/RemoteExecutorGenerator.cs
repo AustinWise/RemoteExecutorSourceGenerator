@@ -145,7 +145,7 @@ namespace RemoteExecutorSourceGenerator
             sb.AppendLine("}));");
             sb.AppendLine("    }");
 
-
+            // TODO: if the instance is disposable, try to dispose it after invoking
             sb.Append($"    private global::RemoteExecutorLib.RemoteInvokeHandle Invoke{methodSymbol.Name}(");
             for (int i = 0; i < methodSymbol.Parameters.Length; i++)
             {

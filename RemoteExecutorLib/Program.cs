@@ -54,17 +54,12 @@ namespace RemoteExecutorLib
 
             // Load the specified assembly, type, and method, then invoke the method.
             // The program's exit code is the return value of the invoked method.
-            Assembly a = null;
-            object instance = null;
             int exitCode = RemoteExecutor.SuccessExitCode;
             try
             {
-                if (!RemoteExecutor.IsSingleFile)
-                {
-                    // Load the assemly and run running module initializers to register methods.
-                    a = Assembly.Load(new AssemblyName(assemblyName));
-                    System.Runtime.CompilerServices.RuntimeHelpers.RunModuleConstructor(a.ManifestModule.ModuleHandle);
-                }
+                // Load the assemly and run module initializers to register methods.
+                Assembly a = Assembly.Load(new AssemblyName(assemblyName));
+                System.Runtime.CompilerServices.RuntimeHelpers.RunModuleConstructor(a.ManifestModule.ModuleHandle);
 
                 int? maybeExitCode = MethodRegistry.Invoke(methodkey, additionalArgs);
                 if (maybeExitCode.HasValue)
@@ -86,7 +81,7 @@ namespace RemoteExecutorLib
                 output.AppendLine("  " + exc);
                 output.AppendLine();
                 output.AppendLine("Child process:");
-                output.AppendLine(string.Format("  {0} {1}", a, methodkey));
+                output.AppendLine(string.Format("  {0} {1}", assemblyName, methodkey));
                 output.AppendLine();
 
                 if (additionalArgs.Length > 0)
@@ -105,7 +100,6 @@ namespace RemoteExecutorLib
                 // for a period after RemoteExecutor exits, preventing that directory being
                 // deleted. Tidy up by resetting it to the temp path.
                 Directory.SetCurrentDirectory(Path.GetTempPath());
-                (instance as IDisposable)?.Dispose();
             }
 
             // Use Exit rather than simply returning the exit code so that we forcibly shut down
