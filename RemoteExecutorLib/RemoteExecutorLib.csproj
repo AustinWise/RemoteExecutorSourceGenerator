@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.assert" Version="2.4.2" />
+        <PackageReference Include="Microsoft.Diagnostics.Runtime" Version="1.0.5" />
+    </ItemGroup>
+
+</Project>
