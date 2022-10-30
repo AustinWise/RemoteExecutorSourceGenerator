@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
@@ -18,7 +18,23 @@
     <ItemGroup>
         <ProjectReference Include="..\RemoteExecutorLib\RemoteExecutorLib.csproj" />
         <ProjectReference Include="..\RemoteExecutorSourceGenerator\RemoteExecutorSourceGenerator.csproj"
-                          OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false" />
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false" />
     </ItemGroup>
+
+    <ItemGroup Condition="'$(PublishAot)' == 'true'">
+        <RdXmlFile Include="rd.xml" />
+        <IlcArg Include="--nometadatablocking" />
+        <IlcArg Include="--feature:System.Reflection.IsTypeConstructionEagerlyValidated=false" />
+    </ItemGroup>
+
+    <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+        <NoWarn>$(NoWarn);IL1005;IL3002</NoWarn>
+        <TrimMode>partial</TrimMode>
+        <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+        <SuppressAotAnalysisWarnings>true</SuppressAotAnalysisWarnings>
+
+        <!-- Forced by ILLink targets; we should fix the SDK -->
+        <SelfContained>true</SelfContained>
+    </PropertyGroup>
 </Project>

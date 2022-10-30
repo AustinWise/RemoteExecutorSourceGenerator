@@ -31,7 +31,6 @@ public class SingleFileTestRunner : XunitTestFramework
         }
 
         var asm = typeof(SingleFileTestRunner).Assembly;
-        Console.WriteLine("Running assembly:" + asm.FullName);
 
         var diagnosticSink = new ConsoleDiagnosticMessageSink();
         var testsFinished = new TaskCompletionSource();
