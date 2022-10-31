@@ -1,9 +1,7 @@
 
-An alternate take on the
+An tweak of the
 [RemoteExecutor](https://github.com/dotnet/arcade/tree/main/src/Microsoft.DotNet.RemoteExecutor/src)
-used in the dotnet/runtime unit tests. Instead of using reflection, it uses a
-source generator to register available remote method and to expose strongly-typed
-wrapper for executing them.
+used in the dotnet/runtime unit tests.
 
 There is also a goal to make this all work for all of these app models:
 
@@ -12,5 +10,13 @@ There is also a goal to make this all work for all of these app models:
 * SingleFile: the .NET Core model, but packaged into a single EXE
 * NativeAOT: compiled ahead-of-time into a single native EXE
 
-Currently, it does work across all of those models. But you have to set the
-`OutputType` of RemoteExecutorLib to `Exe` to work with the first two.
+The main problem the existing version of this library presents is its duel nature
+as both a library and EXE. The single file builder does not elegantly handle having
+multiple EXEs packaged together. And both single-file and NativeAOT don't have good
+ways to invoke a seperate EXE entry point.
+
+All this repo does is move the EXE entry point to a separate assembly. The remote
+executor library exposes an entrypoint that this stub EXE can all. The
+[SingleFileTestRunner](https://github.com/dotnet/runtime/blob/385e1bafaa307736541c6024ab29008f98f400f8/src/libraries/Common/tests/SingleFileTestRunner/SingleFileTestRunner.cs)
+in dotnet/runtime is augmented to also support running as the remote executor
+host by calling in to the library.

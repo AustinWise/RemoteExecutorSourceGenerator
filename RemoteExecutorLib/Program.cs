@@ -15,19 +15,6 @@ namespace RemoteExecutorLib
     /// </summary>
     public static class Program
     {
-        internal static int Main(string[] args)
-        {
-            int? maybeExitCode = TryExecute(args);
-            if (maybeExitCode.HasValue)
-            {
-                return maybeExitCode.Value;
-            }
-
-            // we should not get here
-            Console.Error.WriteLine("Remote executor EXE started, but missing magic argument: " + RemoteExecutor.REMOTE_EXECUTOR_MARKER_ARG);
-            return -1;
-        }
-
         public static int? TryExecute(string[] args)
         {
             if (args.Length == 0 || args[0] != RemoteExecutor.REMOTE_EXECUTOR_MARKER_ARG)
@@ -38,33 +25,53 @@ namespace RemoteExecutorLib
             // The program expects to be passed the target assembly name to load, the type
             // from that assembly to find, and the method from that assembly to invoke.
             // Any additional arguments are passed as strings to the method.
-            if (args.Length < 4)
+            if (args.Length < 5)
             {
-                Console.Error.WriteLine("Usage: {0} " + RemoteExecutor.REMOTE_EXECUTOR_MARKER_ARG + " assemblyName methodKey exceptionFile [additionalArgs]", typeof(Program).GetTypeInfo().Assembly.GetName().Name);
+                Console.Error.WriteLine("Usage: {0} assemblyName typeName methodName exceptionFile [additionalArgs]", typeof(Program).GetTypeInfo().Assembly.GetName().Name);
                 Environment.Exit(-1);
                 return -1;
             }
 
             string assemblyName = args[1];
-            string methodkey = args[2];
-            string exceptionFile = args[3];
-            string[] additionalArgs = args.Length > 4 ?
-                args.Subarray(4, args.Length - 4) :
+            string typeName = args[2];
+            string methodName = args[3];
+            string exceptionFile = args[4];
+            string[] additionalArgs = args.Length > 5 ?
+                args.Subarray(4, args.Length - 5) :
                 Array.Empty<string>();
 
             // Load the specified assembly, type, and method, then invoke the method.
             // The program's exit code is the return value of the invoked method.
+            Assembly a = null;
+            Type t = null;
+            MethodInfo mi = null;
+            object instance = null;
             int exitCode = RemoteExecutor.SuccessExitCode;
             try
             {
-                // Load the assemly and run module initializers to register methods.
-                Assembly a = Assembly.Load(new AssemblyName(assemblyName));
-                System.Runtime.CompilerServices.RuntimeHelpers.RunModuleConstructor(a.ManifestModule.ModuleHandle);
-
-                int? maybeExitCode = MethodRegistry.Invoke(methodkey, additionalArgs);
-                if (maybeExitCode.HasValue)
+                // Create the test class if necessary
+                a = Assembly.Load(new AssemblyName(assemblyName));
+                t = a.GetType(typeName);
+                mi = t.GetTypeInfo().GetDeclaredMethod(methodName);
+                if (!mi.IsStatic)
                 {
-                    exitCode = maybeExitCode.Value;
+                    instance = Activator.CreateInstance(t);
+                }
+
+                // Invoke the test
+                object result = mi.Invoke(instance, additionalArgs);
+
+                if (result is Task<int> task)
+                {
+                    exitCode = task.GetAwaiter().GetResult();
+                }
+                else if (result is Task resultValueTask)
+                {
+                    resultValueTask.GetAwaiter().GetResult();
+                }
+                else if (result is int exit)
+                {
+                    exitCode = exit;
                 }
             }
             // There's a bug in the .NET 7 Preview 7 runtime that makes an AccessViolationException catchable.
@@ -81,7 +88,7 @@ namespace RemoteExecutorLib
                 output.AppendLine("  " + exc);
                 output.AppendLine();
                 output.AppendLine("Child process:");
-                output.AppendLine(string.Format("  {0} {1}", assemblyName, methodkey));
+                output.AppendLine(string.Format("  {0} {1} {2}", a, t, mi));
                 output.AppendLine();
 
                 if (additionalArgs.Length > 0)
@@ -100,6 +107,7 @@ namespace RemoteExecutorLib
                 // for a period after RemoteExecutor exits, preventing that directory being
                 // deleted. Tidy up by resetting it to the temp path.
                 Directory.SetCurrentDirectory(Path.GetTempPath());
+                (instance as IDisposable)?.Dispose();
             }
 
             // Use Exit rather than simply returning the exit code so that we forcibly shut down
